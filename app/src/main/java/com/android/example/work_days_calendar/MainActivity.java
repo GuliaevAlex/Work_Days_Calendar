@@ -6,8 +6,10 @@ import android.annotation.SuppressLint;
 import android.app.DatePickerDialog;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.DatePicker;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import org.joda.time.DateTime;
@@ -17,7 +19,10 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Set;
 
 import de.galgtonold.jollydayandroid.Holiday;
@@ -26,26 +31,14 @@ import de.galgtonold.jollydayandroid.HolidayManager;
 
 public class MainActivity extends AppCompatActivity {
 
-   private LocalDate firstDateLD;
-   private LocalDate secondDateLD;
-
-   private Button choseFirstDate;
-   private Button choseSecondDate;
-   private Button result;
-
-    private DatePicker firstDatePicker;
-    private DatePicker secondDatePicker;
-    private DatePicker officialNonWorkingsDaysPicker;
-
-    private TextView firstDateTextView;
-    private TextView secondDateTextView;
-    private TextView resultTextView;
-
+    private LocalDate firstDateLD, secondDateLD;
+    private Button choseFirstDate, choseSecondDate, result;
+    private TextView firstDateTextView, secondDateTextView, resultTextView;
     private Calendar calendar;
+    private HolidayManager holidayManager;
 
-    HolidayManager holidayManager = HolidayManager.getInstance(HolidayCalendar.GERMANY);
-
-
+    private ArrayAdapter arrayAdapterForHolidayList;
+    private ListView listOfHolidays;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,13 +50,18 @@ public class MainActivity extends AppCompatActivity {
 
         choseFirstDate = findViewById(R.id.firstDateButton);
         choseSecondDate = findViewById(R.id.secondDateButton);
-        result  = findViewById(R.id.resultButton);
+        result = findViewById(R.id.resultButton);
 
         firstDateTextView = findViewById(R.id.firstDateTextView);
         secondDateTextView = findViewById(R.id.secondDateTextView);
         resultTextView = findViewById(R.id.resultTextView);
 
         calendar = Calendar.getInstance();
+
+        holidayManager = HolidayManager.getInstance(HolidayCalendar.GERMANY);
+
+        listOfHolidays = findViewById(R.id.listView);
+
 
 
 
@@ -128,29 +126,35 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
 
                 long betweenDays = ChronoUnit.DAYS.between(firstDateLD, secondDateLD);
-                long betweenWorkingDays = betweenDays - daysWithoutWeekends(firstDateLD,secondDateLD);
-                long totalyWorkingDays = betweenWorkingDays - daysWithoutHollydays(firstDateLD,secondDateLD);
+                long betweenWorkingDays = betweenDays - daysWithoutWeekends(firstDateLD, secondDateLD);
+                long totalyWorkingDays = betweenWorkingDays - daysWithoutHolidays(firstDateLD, secondDateLD);
+
+                arrayAdapterForHolidayList = new ArrayAdapter<>
+                        (getApplicationContext(),android.R.layout.simple_list_item_1,holidaysList(firstDateLD,secondDateLD));
+                listOfHolidays.setAdapter(arrayAdapterForHolidayList);
+
 
                 resultTextView.setText(
                         "Проміжок  часу: " + "\n" +
-                        "Календарних днів: " + betweenDays
-                        +"\n" + "Робочих днів (без вихідних): " + betweenWorkingDays
-                                +"\n" + "Робочих днів (без вихідних і свят): " + totalyWorkingDays
-
+                                "Календарних днів: " + betweenDays
+                                + "\n" + "Робочих днів (без вихідних): " + betweenWorkingDays
+                                + "\n" + "Робочих днів (без вихідних і свят): " + totalyWorkingDays
                 );
+
+
             }
         });
     }
 
-    private int daysWithoutWeekends (LocalDate first, LocalDate second){
+    private int daysWithoutWeekends(LocalDate first, LocalDate second) {
         int weekDays = 0;
-        if(first.equals(second)){
+        if (first.equals(second)) {
             return weekDays;
         }
 
-        while (first.isBefore(second)){
-            if(DayOfWeek.SATURDAY.equals(first.getDayOfWeek()) ||
-                    DayOfWeek.SUNDAY.equals(first.getDayOfWeek())){
+        while (first.isBefore(second)) {
+            if (DayOfWeek.SATURDAY.equals(first.getDayOfWeek()) ||
+                    DayOfWeek.SUNDAY.equals(first.getDayOfWeek())) {
                 weekDays++;
             }
             first = first.plusDays(1);
@@ -158,20 +162,16 @@ public class MainActivity extends AppCompatActivity {
         return weekDays;
     }
 
-    int daysWithoutHollydays(LocalDate first,LocalDate second){
-        ZoneId zoneId = ZoneId.systemDefault();
-        org.joda.time.Interval interval = new Interval(DateTime.parse(first.toString()),DateTime.parse(second.toString()));
+    int daysWithoutHolidays(LocalDate first, LocalDate second) {
+        org.joda.time.Interval interval = new Interval(DateTime.parse(first.toString()), DateTime.parse(second.toString()));
         Set<Holiday> holidaySet = holidayManager.getHolidays(interval);
-        int year = interval.getStart().getYear();
         return holidaySet.size();
     }
 
-
-
-
-
-
-
+    List<Holiday> holidaysList(LocalDate first, LocalDate second) {
+        org.joda.time.Interval interval = new Interval(DateTime.parse(first.toString()), DateTime.parse(second.toString()));
+        return new ArrayList<>( holidayManager.getHolidays(interval));
+    }
 
 
 }
